@@ -389,6 +389,11 @@ function isTrivial(t) {
 // ── Init ──
 loadData();
 
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+
 // Handle back gesture
 window.addEventListener('popstate', (e) => {
   goBack();
