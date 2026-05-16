@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="空调测试查询">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E❄️%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
+<title>伊莱克斯空调测试查询</title>
+<style>
+:root{--bg:#f2f2f6;--card:#fff;--primary:#007aff;--text:#1c1c1e;--secondary:#8e8e93;--border:#e5e5ea;--radius:12px}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);font-size:16px;overflow:hidden;height:100dvh}
+#app{height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto}
+
+/* Header - with safe area for iPhone notch */
+.header{background:var(--card);padding:calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+.header h1{font-size:18px;font-weight:600;flex:1}
+.back-btn{background:none;border:none;font-size:22px;color:var(--primary);padding:12px 12px;margin:-8px 0 -8px -8px;cursor:pointer;display:none;min-width:44px;min-height:44px;text-align:center;border-radius:8px}
+.back-btn:active{background:var(--border)}
+
+/* Screens */
+.screen{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px calc(24px + env(safe-area-inset-bottom, 0px));display:none}
+.screen.active{display:block}
+
+/* Category Grid */
+.cat-grid{display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.cat-card{background:var(--card);border-radius:var(--radius);padding:16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:transform .1s;border:1px solid var(--border)}
+.cat-card:active{transform:scale(.98);opacity:.7}
+.cat-card .name{font-size:16px;font-weight:500}
+.cat-card .count{color:var(--secondary);font-size:14px}
+
+/* Item List */
+.item-list{list-style:none}
+.item-row{padding:14px 16px;background:var(--card);border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.item-row:first-child{border-radius:var(--radius) var(--radius) 0 0}
+.item-row:last-child{border-radius:0 0 var(--radius) var(--radius);border-bottom:none}
+.item-row:only-child{border-radius:var(--radius)}
+.item-row:active{background:#f0f0f5}
+.item-row .seq{color:var(--secondary);font-size:13px;min-width:32px}
+.item-row .name{flex:1;font-size:15px;word-break:break-all}
+.item-row .arrow{color:var(--secondary);font-size:12px}
+
+/* Detail View */
+.detail-section{margin-bottom:12px}
+.detail-section h3{font-size:14px;font-weight:600;color:var(--primary);padding:12px 0 6px;position:sticky;top:0;background:var(--bg);z-index:1}
+.detail-section .content{background:var(--card);border-radius:var(--radius);padding:14px 16px;white-space:pre-wrap;font-size:14px;line-height:1.6;overflow-x:auto}
+.detail-section .content.empty{color:var(--secondary);font-style:italic}
+.detail-header{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.detail-header .title{font-size:17px;font-weight:600;margin-bottom:4px}
+.detail-header .meta{font-size:13px;color:var(--secondary)}
+
+/* Search */
+.search-bar{padding:12px 0;position:sticky;top:0;z-index:5;background:var(--bg)}
+.search-bar input{width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--card);font-size:15px;outline:none}
+.search-bar input:focus{border-color:var(--primary)}
+
+/* Pull to refresh hint */
+.loading{text-align:center;padding:40px;color:var(--secondary)}
+
+/* Product Filter Pills */
+.product-filter{display:flex;gap:8px;padding:8px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.product-filter::-webkit-scrollbar{display:none}
+.product-filter .pill{white-space:nowrap;padding:6px 14px;border-radius:16px;font-size:14px;border:1px solid var(--border);background:var(--card);cursor:pointer;flex-shrink:0;transition:all .15s}
+.product-filter .pill:active{opacity:.7}
+.product-filter .pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <button class="back-btn" id="backBtn" onclick="goBack()">←</button>
+    <h1 id="headerTitle">伊莱克斯空调测试查询</h1>
+  </div>
+  <div id="screenHome" class="screen active">
+    <div class="search-bar">
+      <input type="search" id="searchInput" placeholder="搜索测试项目..." oninput="handleSearch(this.value)">
+    </div>
+    <div class="product-filter" id="productFilter"></div>
+    <div class="cat-grid" id="catGrid"></div>
+  </div>
+  <div id="screenList" class="screen">
+    <div class="search-bar">
+      <input type="search" id="searchListInput" placeholder="在当前分类搜索..." oninput="handleListSearch(this.value)">
+    </div>
+    <ul class="item-list" id="itemList"></ul>
+  </div>
+  <div id="screenDetail" class="screen">
+    <div id="detailContent"></div>
+  </div>
+</div>
+<div id="searchOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:100;overflow-y:auto;padding:calc(60px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));max-width:480px;margin:0 auto">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <input type="search" id="searchFullInput" placeholder="搜索..." style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid var(--border);font-size:15px;outline:none" oninput="handleFullSearch(this.value)" autofocus>
+    <button style="background:none;border:none;color:var(--primary);font-size:16px;cursor:pointer" onclick="closeSearch()">取消</button>
+  </div>
+  <div id="searchResults"></div>
+</div>
+
+<script>
+// Load JSON data
+const DATA_URL = 'app_data.json';
+let DATA = null;
+
+async function loadData() {
+  try {
+    const r = await fetch(DATA_URL + '?t=' + Date.now());
+    DATA = await r.json();
+    renderHome();
+    renderProductFilter();
+  } catch(e) {
+    document.getElementById('catGrid').innerHTML = `<div class="loading">加载失败: ${e.message}</div>`;
+  }
+}
+
+// ── Navigation ──
+let currentCategory = null;
+let currentItemSeq = null;
+let searchHistory = [];
+let currentProduct = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById(id).scrollTop = 0;
+}
+
+function goBack() {
+  if (document.getElementById('screenDetail').classList.contains('active')) {
+    showScreen('screenList');
+    document.getElementById('backBtn').style.display = 'block';
+    document.getElementById('headerTitle').textContent = currentCategory;
+  } else if (document.getElementById('screenList').classList.contains('active')) {
+    showScreen('screenHome');
+    document.getElementById('backBtn').style.display = 'none';
+    document.getElementById('headerTitle').textContent = '伊莱克斯空调测试查询';
+  }
+}
+
+// ── Home: Categories ──
+function renderProductFilter() {
+  const div = document.getElementById('productFilter');
+  let html = `<span class="pill${currentProduct === null ? ' active' : ''}" onclick="selectProduct(null)">全部</span>`;
+  for (const p of DATA.products) {
+    html += `<span class="pill${currentProduct === p ? ' active' : ''}" onclick="selectProduct('${p.replace(/'/g, "\\'")}')">${p}</span>`;
+  }
+  div.innerHTML = html;
+}
+
+function selectProduct(product) {
+  currentProduct = product;
+  renderProductFilter();
+  renderHome();
+}
+
+function renderHome() {
+  const grid = document.getElementById('catGrid');
+  let cats = DATA.categories;
+  if (currentProduct) {
+    cats = cats.filter(c => c.startsWith(currentProduct + ' - '));
+  }
+  grid.innerHTML = cats.map(c => {
+    const count = (DATA.categoryItems[c] || []).length;
+    const displayName = currentProduct ? c.replace(currentProduct + ' - ', '') : c;
+    return `<div class="cat-card" onclick="selectCategory('${c.replace(/'/g, "\\'")}')">
+      <span class="name">${displayName}</span>
+      <span class="count">${count}项</span>
+    </div>`;
+  }).join('');
+}
+
+function selectCategory(cat) {
+  currentCategory = cat;
+  document.getElementById('headerTitle').textContent = cat;
+  document.getElementById('backBtn').style.display = 'block';
+  renderItems(cat);
+  showScreen('screenList');
+}
+
+function renderItems(cat, filterText) {
+  const items = DATA.categoryItems[cat] || [];
+  const list = document.getElementById('itemList');
+  let filtered = items;
+  if (filterText) {
+    const q = filterText.toLowerCase();
+    filtered = items.filter(it => it.item.toLowerCase().includes(q) || it.std.toLowerCase().includes(q) || String(it.seq).includes(q));
+  }
+  if (filtered.length === 0) {
+    list.innerHTML = `<li style="text-align:center;padding:40px;color:var(--secondary)">无匹配结果</li>`;
+    return;
+  }
+  list.innerHTML = filtered.map(it => {
+    const detailCount = countDetails(it.seq);
+    const subtitle = detailCount > 0 ? `${detailCount}项` : '';
+    return `<li class="item-row" onclick="showDetail(${it.seq}, '${it.item.replace(/'/g, "\\'")}')">
+      <span class="seq">#${it.seq}</span>
+      <span class="name">${it.item}</span>
+      <span class="arrow">›</span>
+    </li>`;
+  }).join('');
+}
+
+// ── Search ──
+function handleSearch(v) {
+  if (v.trim().length < 1) {
+    document.getElementById('searchOverlay').style.display = 'none';
+    return;
+  }
+  document.getElementById('searchOverlay').style.display = 'block';
+  document.getElementById('searchFullInput').value = v;
+  handleFullSearch(v);
+}
+
+function handleFullSearch(v) {
+  const q = v.toLowerCase().trim();
+  const results = document.getElementById('searchResults');
+  if (!q) { results.innerHTML = ''; return; }
+
+  const matches = [];
+  for (const cat of DATA.categories) {
+    for (const it of (DATA.categoryItems[cat] || [])) {
+      if (it.item.toLowerCase().includes(q) || it.std.toLowerCase().includes(q) || String(it.seq) === q) {
+        matches.push({...it, cat});
+      }
+    }
+  }
+  if (matches.length === 0) {
+    results.innerHTML = '<div style="text-align:center;padding:40px;color:var(--secondary)">无匹配结果</div>';
+    return;
+  }
+  results.innerHTML = matches.slice(0, 50).map(m => {
+    return `<div class="item-row" onclick="showDetail(${m.seq}, '${m.item.replace(/'/g, "\\'")}', true)">
+      <span class="seq">#${m.seq}</span>
+      <span class="name"><small style="color:var(--secondary)">${m.cat}</small> ${m.item}</span>
+      <span class="arrow">›</span>
+    </div>`;
+  }).join('');
+}
+
+function closeSearch() {
+  document.getElementById('searchOverlay').style.display = 'none';
+  document.getElementById('searchInput').value = '';
+}
+
+function handleListSearch(v) {
+  renderItems(currentCategory, v);
+}
+
+// ── Detail View ──
+function countDetails(seq) {
+  let count = 0;
+  for (const key in DATA.details) {
+    if (DATA.details[key][seq]) count++;
+  }
+  return count;
+}
+
+function findDetails(seq) {
+  const result = {item: '', std: '', details: []};
+  for (const it of (DATA.categoryItems[currentCategory] || [])) {
+    if (it.seq === seq) {
+      result.item = it.item;
+      result.std = it.std;
+      break;
+    }
+  }
+  // Also search all categories
+  let foundCat = currentCategory;
+  if (!result.item) {
+    for (const cat of DATA.categories) {
+      for (const it of (DATA.categoryItems[cat] || [])) {
+        if (it.seq === seq) {
+          result.item = it.item;
+          result.std = it.std;
+          foundCat = cat;
+          break;
+        }
+      }
+      if (result.item) break;
+    }
+  }
+  // Only look up detail from sheets relevant to this category
+  const sheets = DATA.catSheetMap[foundCat] || Object.keys(DATA.details);
+  for (const key of sheets) {
+    const d = DATA.details[key] && DATA.details[key][seq];
+    if (d) {
+      result.details.push({source: key, data: d.detail || {}});
+    }
+  }
+  return result;
+}
+
+function showDetail(seq, itemName, fromSearch) {
+  currentItemSeq = seq;
+  document.getElementById('headerTitle').textContent = itemName;
+  document.getElementById('backBtn').style.display = 'block';
+  showScreen('screenDetail');
+
+  const info = findDetails(seq);
+  const div = document.getElementById('detailContent');
+
+  let html = `<div class="detail-header">
+    <div class="title">${info.item || itemName}</div>
+    ${info.std ? `<div class="meta">标准: ${info.std}</div>` : ''}
+    <div class="meta">序号: #${seq}</div>
+  </div>`;
+
+  if (info.details.length === 0) {
+    html += '<div class="detail-section"><div class="content empty">暂无详细测试数据</div></div>';
+  } else {
+    // Get unique section keys across all matching detail sources
+    const allKeys = new Set();
+    for (const src of info.details) {
+      for (const k in src.data) {
+        // Normalize key names for display
+        let cleanKey = k.replace(/[：:]\s*$/, '').trim();
+        if (cleanKey.startsWith('Unnamed') || cleanKey.startsWith('col') || cleanKey.startsWith('field_')) continue;
+        allKeys.add(cleanKey);
+      }
+    }
+
+    // Section display order (without colons for matching)
+    const order = ['判定要求', '工况', '布点', '电源', '装机要求', '开机设置', '试验过程', '试验要求', '实验方法', '实验步骤', '试验方法', '测试标准', '检查要求', '截图/照片输出', '测试计划', '测试方法及标准', '负责人', '类别', '验证机型及数量', '注意事项'];
+    const sortedKeys = [...allKeys].sort((a, b) => {
+      const ia = order.indexOf(a);
+      const ib = order.indexOf(b);
+      if (ia >= 0 && ib >= 0) return ia - ib;
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      return a.localeCompare(b);
+    });
+
+    for (const key of sortedKeys) {
+      let values = [];
+      for (const src of info.details) {
+        for (const k in src.data) {
+          let clean = k.replace(/[：:]\s*$/, '').trim();
+          if (clean === key && src.data[k]) {
+            values.push(src.data[k]);
+          }
+        }
+      }
+      if (values.length > 0) {
+        const text = values.join('\n---\n');
+        if (isTrivial(text)) continue;
+        html += `<div class="detail-section">
+          <h3>${key}</h3>
+          <div class="content">${escapeHtml(text)}</div>
+        </div>`;
+      }
+    }
+
+    // Also show raw detail source name if there are unmatched keys
+    for (const src of info.details) {
+      for (const k in src.data) {
+        let clean = k.replace(/[：:]\s*$/, '').trim();
+        if (!sortedKeys.includes(clean) && !k.startsWith('Unnamed') && !k.startsWith('col') && !k.startsWith('field_') && src.data[k]) {
+          const text2 = src.data[k];
+          if (isTrivial(text2)) continue;
+          html += `<div class="detail-section">
+            <h3>${escapeHtml(k)}</h3>
+            <div class="content">${escapeHtml(text2)}</div>
+          </div>`;
+          sortedKeys.push(clean);
+        }
+      }
+    }
+  }
+
+  div.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// Hide trivial/empty fields from detail view
+function isTrivial(t) {
+  if (!t || !t.trim()) return true;
+  const v = t.trim();
+  if (v === '无' || v === 'None' || v === 'none' || v === '-' || v === 'N/A') return true;
+  if (v.length <= 1) return true;
+  return false;
+}
+
+// ── Init ──
+loadData();
+
+// Handle back gesture
+window.addEventListener('popstate', (e) => {
+  goBack();
+});
+</script>
+</body>
+</html>
