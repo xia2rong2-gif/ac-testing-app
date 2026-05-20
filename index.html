@@ -105,26 +105,25 @@ const DATA_URL = 'app_data.json';
 let DATA = null;
 
 async function loadData() {
+  // Try cache first (instant load for offline/repeat visits)
+  if ('caches' in window) {
+    try {
+      const cached = await caches.match('/data-cache');
+      if (cached) { DATA = await cached.json(); renderHome(); renderProductFilter(); }
+    } catch(_) {}
+  }
+  // Then fetch latest from network
   try {
     const r = await fetch(DATA_URL + '?t=' + Date.now());
     DATA = await r.json();
-    // Cache the data for offline use (under bare URL without timestamp)
     if ('caches' in window) {
-      const c = await caches.open('ac-testing-v2');
-      c.put(DATA_URL, new Response(JSON.stringify(DATA), {headers: {'Content-Type': 'application/json'}}));
+      const c = await caches.open('ac-testing-v3');
+      c.put('/data-cache', new Response(JSON.stringify(DATA), {headers: {'Content-Type': 'application/json'}}));
     }
   } catch(e) {
-    // Fall back to service worker cache
-    if ('caches' in window) {
-      try {
-        const cached = await caches.match(DATA_URL);
-        if (cached) { DATA = await cached.json(); }
-      } catch(_) {}
-    }
-    if (!DATA) {
-      document.getElementById('catGrid').innerHTML = `<div class="loading">加载失败: ${e.message}</div>`;
-      return;
-    }
+    if (DATA) return; // cache was loaded above
+    document.getElementById('catGrid').innerHTML = `<div class="loading">加载失败: ${e.message}</div>`;
+    return;
   }
   renderHome();
   renderProductFilter();
