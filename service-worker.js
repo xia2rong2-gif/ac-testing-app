@@ -1,4 +1,4 @@
-const CACHE = 'ac-testing-v3';
+const CACHE = 'ac-testing-v4';
 const PRECACHE = ['index.html', 'manifest.json'];
 
 self.addEventListener('install', e => {
@@ -18,20 +18,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
-
-  // app_data.json: network-first, fall back to cache
-  // Use fixed cache key '/data-cache' to avoid URL resolution mismatches
-  if (url.pathname.endsWith('/app_data.json')) {
-    e.respondWith(
-      fetch(e.request).then(r => {
-        caches.open(CACHE).then(c => c.put('/data-cache', r.clone()));
-        return r;
-      }).catch(() => caches.match('/data-cache'))
-    );
-    return;
-  }
-
-  // Everything else: cache-first
+  // Only cache static assets — data is handled by localStorage in the page
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request).then(r => {
       caches.open(CACHE).then(c => c.put(e.request, r.clone()));

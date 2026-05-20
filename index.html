@@ -105,23 +105,19 @@ const DATA_URL = 'app_data.json';
 let DATA = null;
 
 async function loadData() {
-  // Try cache first (instant load for offline/repeat visits)
-  if ('caches' in window) {
-    try {
-      const cached = await caches.match('/data-cache');
-      if (cached) { DATA = await cached.json(); renderHome(); renderProductFilter(); }
-    } catch(_) {}
-  }
+  // Try localStorage first (instant load for offline/repeat visits)
+  try {
+    const saved = localStorage.getItem('appData');
+    if (saved) { DATA = JSON.parse(saved); renderHome(); renderProductFilter(); }
+  } catch(_) {}
+
   // Then fetch latest from network
   try {
     const r = await fetch(DATA_URL + '?t=' + Date.now());
     DATA = await r.json();
-    if ('caches' in window) {
-      const c = await caches.open('ac-testing-v3');
-      c.put('/data-cache', new Response(JSON.stringify(DATA), {headers: {'Content-Type': 'application/json'}}));
-    }
+    localStorage.setItem('appData', JSON.stringify(DATA));
   } catch(e) {
-    if (DATA) return; // cache was loaded above
+    if (DATA) return; // localStorage data loaded above
     document.getElementById('catGrid').innerHTML = `<div class="loading">加载失败: ${e.message}</div>`;
     return;
   }
