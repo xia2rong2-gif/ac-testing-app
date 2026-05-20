@@ -108,11 +108,26 @@ async function loadData() {
   try {
     const r = await fetch(DATA_URL + '?t=' + Date.now());
     DATA = await r.json();
-    renderHome();
-    renderProductFilter();
+    // Cache the data for offline use (under bare URL without timestamp)
+    if ('caches' in window) {
+      const c = await caches.open('ac-testing-v2');
+      c.put(DATA_URL, new Response(JSON.stringify(DATA), {headers: {'Content-Type': 'application/json'}}));
+    }
   } catch(e) {
-    document.getElementById('catGrid').innerHTML = `<div class="loading">加载失败: ${e.message}</div>`;
+    // Fall back to service worker cache
+    if ('caches' in window) {
+      try {
+        const cached = await caches.match(DATA_URL);
+        if (cached) { DATA = await cached.json(); }
+      } catch(_) {}
+    }
+    if (!DATA) {
+      document.getElementById('catGrid').innerHTML = `<div class="loading">加载失败: ${e.message}</div>`;
+      return;
+    }
   }
+  renderHome();
+  renderProductFilter();
 }
 
 // ── Navigation ──

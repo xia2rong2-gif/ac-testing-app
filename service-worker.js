@@ -1,9 +1,6 @@
-const CACHE = 'ac-testing-v1';
-const PRECACHE = [
-  'index.html',
-  'manifest.json',
-  'app_data.json'
-];
+const CACHE = 'ac-testing-v2';
+const PRECACHE = ['index.html', 'manifest.json'];
+const DATA_URL = 'app_data.json';
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -21,15 +18,21 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // Only handle same-origin requests
   if (url.origin !== location.origin) return;
 
-  // app_data.json: network-first (latest data), fall back to cache
-  if (url.pathname.endsWith('/app_data.json')) {
+  // Normalize the URL: strip cache-busting query param for app_data.json
+  let normalized = e.request;
+  if (url.pathname.endsWith('/' + DATA_URL)) {
+    normalized = new Request(DATA_URL, {headers: e.request.headers});
+  }
+
+  // app_data.json: network-first, fall back to cache, update cache on success
+  if (url.pathname.endsWith('/' + DATA_URL)) {
     e.respondWith(
-      fetch(e.request)
-        .then(r => caches.open(CACHE).then(c => { c.put(e.request, r.clone()); return r; }))
-        .catch(() => caches.match(e.request))
+      fetch(normalized).then(r => {
+        caches.open(CACHE).then(c => c.put(normalized, r.clone()));
+        return r;
+      }).catch(() => caches.match(normalized))
     );
     return;
   }
