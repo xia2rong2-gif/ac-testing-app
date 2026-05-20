@@ -1,10 +1,7 @@
-const CACHE = 'ac-testing-v4';
-const PRECACHE = ['index.html', 'manifest.json'];
+const CACHE = 'ac-testing-v6';
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', e => {
@@ -16,13 +13,17 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Never intercept data requests — page handles caching via localStorage
+  if (e.request.url.includes('/app_data.json')) return;
+
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
-  // Only cache static assets — data is handled by localStorage in the page
+
+  // Network-first for everything: always try network, fall back to cache
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).then(r => {
+    fetch(e.request).then(r => {
       caches.open(CACHE).then(c => c.put(e.request, r.clone()));
       return r;
-    }))
+    }).catch(() => caches.match(e.request))
   );
 });
