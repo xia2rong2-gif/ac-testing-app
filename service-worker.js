@@ -1,7 +1,10 @@
-const CACHE = 'ac-testing-v6';
+const CACHE = 'ac-testing-v7';
+const PRECACHE = ['index.html'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(self.skipWaiting());
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -13,13 +16,13 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Never intercept data requests — page handles caching via localStorage
+  // Data requests pass through — page handles caching via localStorage
   if (e.request.url.includes('/app_data.json')) return;
 
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  // Network-first for everything: always try network, fall back to cache
+  // Network-first: get latest from network, fall back to cache
   e.respondWith(
     fetch(e.request).then(r => {
       caches.open(CACHE).then(c => c.put(e.request, r.clone()));
