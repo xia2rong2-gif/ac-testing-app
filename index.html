@@ -125,8 +125,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Ne
 const DATA_URL = 'app_data.json';
 let DATA = null;
 
-// API 基础地址 — 部署后请替换为腾讯云 API 网关地址
+// API 基础地址 — 腾讯云 SCF HTTP 触发器
 const API_BASE = 'https://1438451646-142fbgvdtj.ap-guangzhou.tencentscf.com';
+
+// fetch 超时辅助函数
+function fetchWithTimeout(url, opts = {}, ms = 5000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
 
 async function loadData() {
   // Try localStorage first (instant load for offline/repeat visits)
@@ -425,7 +432,7 @@ async function checkAuth() {
   const token = localStorage.getItem('auth_token');
   if (token) {
     try {
-      const r = await fetch(API_BASE + '/api/verify?token=' + encodeURIComponent(token));
+      const r = await fetchWithTimeout(API_BASE + '/api/verify?token=' + encodeURIComponent(token));
       const data = await r.json();
       if (data.valid) return true;
       localStorage.removeItem('auth_token');
@@ -447,7 +454,7 @@ async function submitInviteCode() {
   if (!code) { err.textContent = '请输入邀请码'; return; }
   btn.disabled = true; err.textContent = '';
   try {
-    const r = await fetch(API_BASE + '/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+    const r = await fetchWithTimeout(API_BASE + '/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({code}) });
     const data = await r.json();
     if (data.success) {
       localStorage.setItem('auth_token', data.token);
