@@ -425,8 +425,12 @@ async function checkAuth() {
       const r = await fetch('/api/verify?token=' + encodeURIComponent(token));
       const data = await r.json();
       if (data.valid) return true;
-    } catch(_) {}
-    localStorage.removeItem('auth_token');
+      // 服务器明确返回无效时才清除 token
+      localStorage.removeItem('auth_token');
+    } catch(_) {
+      // 网络错误（离线/服务器波动）— 保留 token，下次再验证
+      return true;
+    }
   }
   document.getElementById('authOverlay').style.display = 'flex';
   document.getElementById('inviteCodeInput').focus();
