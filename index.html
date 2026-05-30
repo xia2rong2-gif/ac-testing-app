@@ -472,9 +472,6 @@ async function submitInviteCode() {
 // Register service worker for offline support
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js').catch(() => {});
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
-  });
 }
 
 // Handle back gesture

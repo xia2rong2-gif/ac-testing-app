@@ -1,4 +1,4 @@
-const CACHE = 'ac-testing-v8';
+const CACHE = 'ac-testing-v9';
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -15,14 +15,33 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Never intercept API or data requests
+  // Never intercept API requests (need real-time network)
   if (e.request.url.includes('/api/')) return;
-  if (e.request.url.includes('/app_data.json')) return;
 
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  // Network-first: get latest from network, fall back to cache
+  // Navigation: serve cached index.html when offline
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('index.html'))
+    );
+    return;
+  }
+
+  // app_data.json: network-first, cache on success, fallback on failure
+  if (e.request.url.includes('app_data.json')) {
+    e.respondWith(
+      fetch(e.request).then(r => {
+        const copy = r.clone();
+        caches.open(CACHE).then(c => c.put('app_data', copy));
+        return r;
+      }).catch(() => caches.match('app_data'))
+    );
+    return;
+  }
+
+  // Other same-origin assets: network-first, fallback to cache
   e.respondWith(
     fetch(e.request).then(r => {
       caches.open(CACHE).then(c => c.put(e.request, r.clone()));
