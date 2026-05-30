@@ -432,18 +432,16 @@ async function checkAuth() {
   const token = localStorage.getItem('auth_token');
   if (token) {
     try {
-      const r = await fetchWithTimeout(API_BASE + '/api/verify?token=' + encodeURIComponent(token));
+      const r = await fetchWithTimeout(API_BASE + '/api/verify?token=' + encodeURIComponent(token), {}, 2000);
       const data = await r.json();
       if (data.valid) return true;
       localStorage.removeItem('auth_token');
     } catch(_) {
-      return true; // 保留 token
+      return true; // 保留 token，离线可用
     }
   }
-  // 没 token 且离线 → 跳过登录，直接使用
+  // 没 token 且离线 → 跳过登录
   if (!navigator.onLine) return true;
-  document.getElementById('authOverlay').style.display = 'flex';
-  document.getElementById('inviteCodeInput').focus();
   return false;
 }
 
@@ -472,8 +470,17 @@ async function submitInviteCode() {
 
 // ── Init ──
 (async function init() {
+  // Step 1: Show cached data immediately (offline / slow network)
+  const saved = localStorage.getItem('appData');
+  if (saved) {
+    try { DATA = JSON.parse(saved); renderHome(); renderProductFilter(); } catch(_) {}
+  }
+  // Step 2: Check auth in background (2s timeout)
   const ok = await checkAuth();
-  if (ok) loadData();
+  if (ok) loadData(); else {
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('inviteCodeInput').focus();
+  }
 })();
 
 // Register service worker for offline support
