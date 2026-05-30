@@ -70,8 +70,8 @@ code{font-size:13px;background:var(--bg);padding:2px 6px;border-radius:4px;word-
 </div>
 
 <script>
-// API 基础地址 — 部署后请替换为腾讯云 API 网关地址
-const API_BASE = 'https://ac-testing-api.rongx3192.workers.dev';
+// API 基础地址 — 腾讯云 SCF HTTP 触发器
+const API_BASE = 'https://1438451646-142fbgvdtj.ap-guangzhou.tencentscf.com';
 
 let adminToken = sessionStorage.getItem('admin_token');
 if (adminToken) document.getElementById('loginForm').style.display = 'none';
