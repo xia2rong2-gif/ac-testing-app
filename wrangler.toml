@@ -1,8 +1,0 @@
-name = "ac-testing-api"
-main = "worker.js"
-compatibility_date = "2024-12-01"
-workers_dev = true
-
-[[kv_namespaces]]
-binding = "KV"
-id = "f19e726339774c15abe46bfee524eba5"

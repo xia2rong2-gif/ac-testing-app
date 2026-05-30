@@ -60,8 +60,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Ne
 /* Pull to refresh hint */
 .loading{text-align:center;padding:40px;color:var(--secondary)}
 
-/* Auth Overlay */
-
 /* Product Filter Pills */
 .product-filter{display:flex;gap:8px;padding:8px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .product-filter::-webkit-scrollbar{display:none}
@@ -399,23 +397,15 @@ function isTrivial(t) {
 }
 
 // ── Init ──
-(async function init() {
-  const saved = localStorage.getItem('appData');
-  if (saved) {
-    try { DATA = JSON.parse(saved); renderHome(); renderProductFilter(); } catch(_) {}
-  }
-  loadData();
-})();
+loadData();
 
-// Remove any existing service worker to fix caching issues
+// Register service worker for offline support
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(reg => reg.unregister());
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  // Auto-reload when a new SW takes control
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
   });
-}
-// Clear all caches
-if ('caches' in window) {
-  caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
 }
 
 // Handle back gesture
