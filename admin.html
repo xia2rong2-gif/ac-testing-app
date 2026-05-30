@@ -70,6 +70,9 @@ code{font-size:13px;background:var(--bg);padding:2px 6px;border-radius:4px;word-
 </div>
 
 <script>
+// API 基础地址 — 部署后请替换为腾讯云 API 网关地址
+const API_BASE = '';
+
 let adminToken = sessionStorage.getItem('admin_token');
 if (adminToken) document.getElementById('loginForm').style.display = 'none';
 if (adminToken) document.getElementById('dashboard').style.display = 'block';
@@ -78,7 +81,7 @@ async function adminLogin() {
   const pw = document.getElementById('adminPassword').value;
   const err = document.getElementById('loginErr');
   try {
-    const r = await fetch('/api/admin-login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password: pw}) });
+    const r = await fetch(API_BASE + '/api/admin-login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password: pw}) });
     const d = await r.json();
     if (d.success) {
       adminToken = d.token;
@@ -93,7 +96,7 @@ async function adminLogin() {
 }
 
 async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: {'Content-Type':'application/json', Authorization: `Bearer ${adminToken}`, ...opts.headers } });
+  const r = await fetch(API_BASE + path, { ...opts, headers: {'Content-Type':'application/json', Authorization: `Bearer ${adminToken}`, ...opts.headers } });
   return r.json();
 }
 
