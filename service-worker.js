@@ -1,9 +1,8 @@
-const CACHE = 'ac-testing-v7';
-const PRECACHE = ['index.html'];
+const CACHE = 'ac-testing-v8';
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.addAll(['index.html', 'manifest.json'])).then(() => self.skipWaiting())
   );
 });
 
@@ -16,7 +15,8 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Data requests pass through — page handles caching via localStorage
+  // Never intercept API or data requests
+  if (e.request.url.includes('/api/')) return;
   if (e.request.url.includes('/app_data.json')) return;
 
   const url = new URL(e.request.url);

@@ -60,6 +60,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Ne
 /* Pull to refresh hint */
 .loading{text-align:center;padding:40px;color:var(--secondary)}
 
+/* Auth Overlay */
+#authOverlay{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px}
+#authOverlay .box{background:var(--card);border-radius:var(--radius);padding:32px;width:100%;max-width:360px;text-align:center}
+#authOverlay h2{font-size:20px;margin-bottom:4px}
+#authOverlay p{font-size:14px;color:var(--secondary);margin-bottom:20px}
+#authOverlay input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:16px;text-align:center;letter-spacing:2px;outline:none;margin-bottom:12px}
+#authOverlay input:focus{border-color:var(--primary)}
+#authOverlay button{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;min-height:44px}
+#authOverlay button:disabled{opacity:.5}
+#authOverlay .err{color:var(--danger);font-size:14px;margin-top:8px;text-align:center}
+
 /* Product Filter Pills */
 .product-filter{display:flex;gap:8px;padding:8px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .product-filter::-webkit-scrollbar{display:none}
@@ -97,6 +108,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Ne
     <button style="background:none;border:none;color:var(--primary);font-size:16px;cursor:pointer" onclick="closeSearch()">取消</button>
   </div>
   <div id="searchResults"></div>
+</div>
+
+<div id="authOverlay">
+  <div class="box">
+    <h2>邀请码验证</h2>
+    <p>请输入邀请码以访问应用</p>
+    <input type="text" id="inviteCodeInput" placeholder="输入邀请码" autocomplete="off" onkeydown="if(event.key==='Enter')submitInviteCode()">
+    <button id="loginBtn" onclick="submitInviteCode()">验证</button>
+    <div id="loginError" class="err"></div>
+  </div>
 </div>
 
 <script>
@@ -396,13 +417,54 @@ function isTrivial(t) {
   return false;
 }
 
+// ── Auth ──
+async function checkAuth() {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    try {
+      const r = await fetch('/api/verify?token=' + encodeURIComponent(token));
+      const data = await r.json();
+      if (data.valid) return true;
+    } catch(_) {}
+    localStorage.removeItem('auth_token');
+  }
+  document.getElementById('authOverlay').style.display = 'flex';
+  document.getElementById('inviteCodeInput').focus();
+  return false;
+}
+
+async function submitInviteCode() {
+  const code = document.getElementById('inviteCodeInput').value.trim();
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginError');
+  if (!code) { err.textContent = '请输入邀请码'; return; }
+  btn.disabled = true; err.textContent = '';
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({code}) });
+    const data = await r.json();
+    if (data.success) {
+      localStorage.setItem('auth_token', data.token);
+      document.getElementById('authOverlay').style.display = 'none';
+      loadData();
+    } else {
+      err.textContent = data.message || '验证失败';
+    }
+  } catch(e) {
+    err.textContent = '网络错误，请重试';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ── Init ──
-loadData();
+(async function init() {
+  const ok = await checkAuth();
+  if (ok) loadData();
+})();
 
 // Register service worker for offline support
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js').catch(() => {});
-  // Auto-reload when a new SW takes control
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     window.location.reload();
   });
