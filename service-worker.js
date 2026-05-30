@@ -1,4 +1,4 @@
-const CACHE = 'ac-testing-v10';
+const CACHE = 'ac-testing-v11';
 
 self.addEventListener('install', e => {
   e.waitUntil(
