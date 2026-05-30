@@ -1,8 +1,8 @@
-const CACHE = 'ac-testing-v9';
+const CACHE = 'ac-testing-v10';
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(['index.html', 'manifest.json'])).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.addAll(['index.html', 'manifest.json', 'app_data.json'])).then(() => self.skipWaiting())
   );
 });
 
@@ -29,14 +29,16 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // app_data.json: network-first, cache on success, fallback on failure
+  // app_data.json: cache-first (ignore ?t= cache-busting param)
   if (e.request.url.includes('app_data.json')) {
     e.respondWith(
-      fetch(e.request).then(r => {
-        const copy = r.clone();
-        caches.open(CACHE).then(c => c.put('app_data', copy));
-        return r;
-      }).catch(() => caches.match('app_data'))
+      caches.match(e.request, { ignoreSearch: true }).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(r => {
+          caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+          return r;
+        });
+      })
     );
     return;
   }

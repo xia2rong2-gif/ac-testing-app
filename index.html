@@ -428,13 +428,13 @@ async function checkAuth() {
       const r = await fetch(API_BASE + '/api/verify?token=' + encodeURIComponent(token));
       const data = await r.json();
       if (data.valid) return true;
-      // 服务器明确返回无效时才清除 token
       localStorage.removeItem('auth_token');
     } catch(_) {
-      // 网络错误（离线/服务器波动）— 保留 token，下次再验证
-      return true;
+      return true; // 保留 token
     }
   }
+  // 没 token 且离线 → 跳过登录，直接使用
+  if (!navigator.onLine) return true;
   document.getElementById('authOverlay').style.display = 'flex';
   document.getElementById('inviteCodeInput').focus();
   return false;
