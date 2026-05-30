@@ -130,11 +130,14 @@ async function login(body) {
   return { success: true, token };
 }
 
-async function verify(headers) {
-  const token = (headers.Authorization || headers.authorization || '').replace('Bearer ', '');
-  if (!token) return { success: false };
+async function verify(headers, qs) {
+  // Token can be in Authorization header OR query string
+  let token = (headers.Authorization || headers.authorization || '').replace('Bearer ', '');
+  if (!token) token = qs.token || '';
+  if (!token) return { success: false, valid: false };
   const sessions = await getSessions();
-  return { success: !!sessions[token] };
+  const valid = !!sessions[token];
+  return { success: valid, valid };
 }
 
 async function adminLogin(body) {
@@ -224,6 +227,9 @@ exports.main_handler = async (event) => {
   const body = event.body ? JSON.parse(event.body) : {};
   const headers = event.headers || {};
 
+  // Parse query string (HTTP trigger uses queryString, API Gateway uses queryStringParameters)
+  const qs = event.queryString || event.queryStringParameters || {};
+
   // Check config
   if (!CFG.cosBucket) {
     return {
@@ -238,7 +244,7 @@ exports.main_handler = async (event) => {
     const route = method + ' ' + path;
     switch (route) {
       case 'POST /api/login':          result = await login(body); break;
-      case 'GET /api/verify':          result = await verify(headers); break;
+      case 'GET /api/verify':          result = await verify(headers, qs); break;
       case 'POST /api/admin-login':    result = await adminLogin(body); break;
       case 'GET /api/admin/codes':     result = await listCodes(headers); break;
       case 'POST /api/admin/codes':    result = await createCode(body, headers); break;
