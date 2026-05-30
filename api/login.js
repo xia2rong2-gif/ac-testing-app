@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   const session = { code_used: key, created_at: Date.now(), ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress, user_agent: req.headers['user-agent'] || '' };
 
   await Promise.all([
-    kv.set(`session:${token}`, JSON.stringify(session), { ex: 604800 }),
+    kv.set(`session:${token}`, JSON.stringify(session)),
     kv.hset('invite_codes', { [key]: JSON.stringify({ ...codeData, used_count: codeData.used_count + 1 }) }),
     kv.lpush('registered_users', JSON.stringify(session)),
   ]);
