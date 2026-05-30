@@ -407,9 +407,15 @@ function isTrivial(t) {
   loadData();
 })();
 
-// Register service worker for offline support
+// Remove any existing service worker to fix caching issues
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
+// Clear all caches
+if ('caches' in window) {
+  caches.keys().then(keys => keys.forEach(key => caches.delete(key)));
 }
 
 // Handle back gesture
