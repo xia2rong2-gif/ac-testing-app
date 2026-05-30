@@ -61,15 +61,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Ne
 .loading{text-align:center;padding:40px;color:var(--secondary)}
 
 /* Auth Overlay */
-#authOverlay{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px}
-#authOverlay .box{background:var(--card);border-radius:var(--radius);padding:32px;width:100%;max-width:360px;text-align:center}
-#authOverlay h2{font-size:20px;margin-bottom:4px}
-#authOverlay p{font-size:14px;color:var(--secondary);margin-bottom:20px}
-#authOverlay input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);font-size:16px;text-align:center;letter-spacing:2px;outline:none;margin-bottom:12px}
-#authOverlay input:focus{border-color:var(--primary)}
-#authOverlay button{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;min-height:44px}
-#authOverlay button:disabled{opacity:.5}
-#authOverlay .err{color:var(--danger);font-size:14px;margin-top:8px;text-align:center}
 
 /* Product Filter Pills */
 .product-filter{display:flex;gap:8px;padding:8px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
@@ -110,30 +101,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Ne
   <div id="searchResults"></div>
 </div>
 
-<div id="authOverlay">
-  <div class="box">
-    <h2>邀请码验证</h2>
-    <p>请输入邀请码以访问应用</p>
-    <input type="text" id="inviteCodeInput" placeholder="输入邀请码" autocomplete="off" onkeydown="if(event.key==='Enter')submitInviteCode()">
-    <button id="loginBtn" onclick="submitInviteCode()">验证</button>
-    <div id="loginError" class="err"></div>
-  </div>
-</div>
-
 <script>
 // Load JSON data
 const DATA_URL = 'app_data.json';
 let DATA = null;
-
-// API 基础地址 — 腾讯云 SCF HTTP 触发器
-const API_BASE = 'https://1438451646-142fbgvdtj.ap-guangzhou.tencentscf.com';
-
-// fetch 超时辅助函数
-function fetchWithTimeout(url, opts = {}, ms = 5000) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
-}
 
 async function loadData() {
   // Try localStorage first (instant load for offline/repeat visits)
@@ -427,60 +398,13 @@ function isTrivial(t) {
   return false;
 }
 
-// ── Auth ──
-async function checkAuth() {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    try {
-      const r = await fetchWithTimeout(API_BASE + '/api/verify?token=' + encodeURIComponent(token), {}, 2000);
-      const data = await r.json();
-      if (data.valid) return true;
-      localStorage.removeItem('auth_token');
-    } catch(_) {
-      return true; // 保留 token，离线可用
-    }
-  }
-  // 没 token 且离线 → 跳过登录
-  if (!navigator.onLine) return true;
-  return false;
-}
-
-async function submitInviteCode() {
-  const code = document.getElementById('inviteCodeInput').value.trim();
-  const btn = document.getElementById('loginBtn');
-  const err = document.getElementById('loginError');
-  if (!code) { err.textContent = '请输入邀请码'; return; }
-  btn.disabled = true; err.textContent = '';
-  try {
-    const r = await fetchWithTimeout(API_BASE + '/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({code}) });
-    const data = await r.json();
-    if (data.success) {
-      localStorage.setItem('auth_token', data.token);
-      document.getElementById('authOverlay').style.display = 'none';
-      loadData();
-    } else {
-      err.textContent = data.message || '验证失败';
-    }
-  } catch(e) {
-    err.textContent = '网络错误，请重试';
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 // ── Init ──
 (async function init() {
-  // Step 1: Show cached data immediately (offline / slow network)
   const saved = localStorage.getItem('appData');
   if (saved) {
     try { DATA = JSON.parse(saved); renderHome(); renderProductFilter(); } catch(_) {}
   }
-  // Step 2: Check auth in background (2s timeout)
-  const ok = await checkAuth();
-  if (ok) loadData(); else {
-    document.getElementById('authOverlay').style.display = 'flex';
-    document.getElementById('inviteCodeInput').focus();
-  }
+  loadData();
 })();
 
 // Register service worker for offline support
