@@ -1,5 +1,5 @@
-const CACHE = 'ac-testing-v7';
-const PRECACHE = ['index.html'];
+const CACHE = 'ac-testing-v8';
+const PRECACHE = ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -22,7 +22,15 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
 
-  // Network-first: get latest from network, fall back to cache
+  // Navigation: network first, fall back to cached index.html
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('index.html'))
+    );
+    return;
+  }
+
+  // Other assets: network-first, fall back to cache
   e.respondWith(
     fetch(e.request).then(r => {
       caches.open(CACHE).then(c => c.put(e.request, r.clone()));
